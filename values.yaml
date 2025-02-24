@@ -139,7 +139,7 @@ labels: {}
 # Ingress configuration
 ingress:
   # Enable all ingress resources (deprecated - use ingress.web.enabled and ingress.flower.enabled)
-  enabled: ~
+  enabled: true
 
   # Configs for the Ingress of the web Service
   web:
@@ -156,7 +156,7 @@ ingress:
     pathType: "ImplementationSpecific"
 
     # The hostname for the web Ingress (Deprecated - renamed to `ingress.web.hosts`)
-    host: ""
+    host: "airflow.lakehouse.local"
 
     # The hostnames or hosts configuration for the web Ingress
     hosts: []
@@ -170,7 +170,7 @@ ingress:
     #     secretName: ""
 
     # The Ingress Class for the web Ingress (used only with Kubernetes v1.19 and above)
-    ingressClassName: ""
+    ingressClassName: "nginx"
 
     # configs for web Ingress TLS (Deprecated - renamed to `ingress.web.hosts[*].tls`)
     tls:
@@ -264,7 +264,7 @@ rbac:
 
 # Airflow executor
 # One of: LocalExecutor, LocalKubernetesExecutor, CeleryExecutor, KubernetesExecutor, CeleryKubernetesExecutor
-executor: "CeleryExecutor"
+executor: "KubernetesExecutor"
 
 # If this is true and using LocalExecutor/KubernetesExecutor/CeleryKubernetesExecutor, the scheduler's
 # service account will have access to communicate with the api-server and launch pods.
@@ -2596,7 +2596,7 @@ dags:
     ## optional subpath for dag volume mount
     subPath: ~
   gitSync:
-    enabled: false
+    enabled: true
 
     # git repo clone url
     # ssh example: git@github.com:apache/airflow.git
@@ -2611,7 +2611,7 @@ dags:
     maxFailures: 0
     # subpath within the repo where dags are located
     # should be "" if dags are at repo root
-    subPath: "airflow/dags"
+    subPath: "aiflow/dags"
     # if your repo needs a user name password
     # you can load them to a k8s secret like the one below
     #   ---
@@ -2629,6 +2629,84 @@ dags:
     # and specify the name of the secret below
     #
     credentialsSecret: git-credentials
+    #
+    #
+    # If you are using an ssh clone url, you can load
+    # the ssh private key to a k8s secret like the one below
+    #   ---
+    #   apiVersion: v1
+    #   kind: Secret
+    #   metadata:
+    #     name: airflow-ssh-secret
+    #   data:
+    #     # key needs to be gitSshKey
+    #     gitSshKey: <base64_encoded_data>
+    # and specify the name of the secret below
+    # sshKeySecret: airflow-ssh-secret
+    #
+    # Or set sshKeySecret with your key
+    # sshKey: |-
+    #   -----BEGIN {OPENSSH PRIVATE KEY}-----
+    #   ...
+    #   -----END {OPENSSH PRIVATE KEY}-----
+    #
+    # If you are using an ssh private key, you can additionally
+    # specify the content of your known_hosts file, example:
+    #
+    # knownHosts: |
+    #    <host1>,<ip1> <key1>
+    #    <host2>,<ip2> <key2>
+
+    # interval between git sync attempts in seconds
+    # high values are more likely to cause DAGs to become out of sync between different components
+    # low values cause more traffic to the remote git repository
+    # Go-style duration string (e.g. "100ms" or "0.1s" = 100ms).
+    # For backwards compatibility, wait will be used if it is specified.
+    period: 5s
+    wait: ~
+    # add variables from secret into gitSync containers, such proxy-config
+    envFrom: ~
+    # envFrom: |
+    #   - secretRef:
+    #       name: 'proxy-config'
+
+    containerName: git-sync
+    uid: 65533
+
+    # When not set, the values defined in the global securityContext will be used
+    securityContext: {}
+    #  runAsUser: 65533
+    #  runAsGroup: 0
+
+    securityContexts:
+      container: {}
+
+    # container level lifecycle hooks
+    containerLifecycleHooks: {}
+
+    # Mount additional volumes into git-sync. It can be templated like in the following example:
+    #   extraVolumeMounts:
+    #     - name: my-templated-extra-volume
+    #       mountPath: "{{ .Values.my_custom_path }}"
+    #       readOnly: true
+    extraVolumeMounts: []
+    env: []
+    # Supported env vars for gitsync can be found at https://github.com/kubernetes/git-sync
+    # - name: ""
+    #   value: ""
+
+    # Configuration for empty dir volume
+    # emptyDirConfig:
+    #   sizeLimit: 1Gi
+    #   medium: Memory
+
+    resources: {}
+    #  limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    #  requests:
+    #   cpu: 100m
+    #   memory: 128Mi
 
 logs:
   # Configuration for empty dir volume (if logs.persistence.enabled == false)
