@@ -11,5 +11,4 @@ with DAG(dag_id="medium_blog_dag", start_date=datetime(2024, 8, 8), schedule="0 
     def airflow():
         print("airflow")
 
-    # Set dependencies between tasks
     hello >> airflow()
